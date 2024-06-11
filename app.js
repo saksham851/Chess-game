@@ -22,10 +22,55 @@ app.get('/',(req,res)=>{
 })
 
 io.on("connection",function(uniquesocket){
-    console.log("connected");  
-    uniquesocket.on("disconnect",function(){
-        console.log("disconnect")
-    }) 
+        console.log("connected"); 
+        if(!players.white)
+            {
+                players.white=uniquesocket.id;
+                uniquesocket.emit("playerRole",w)
+            }
+        else if(!players.black){
+              players.black=uniquesocket.id;
+              uniquesocket.emit("playerRole","b")
+        }
+        else{
+            uniquesocket.emit("spectatorRole")
+        }
+
+
+        uniquesocket.on("disconnect",function(){
+            if(uniquesocket.id===players.white)
+                {
+                    delete players.white;
+                }
+             else if(uniquesocket.id ===players.black)
+                {
+                     delete players.black;
+                }
+        });
+
+        uniquesocket.on("move",(currmove)=>{
+           try{
+              if(chess.turn()==='w' && uniquesocket.id!==players.white)return;
+              if(chess.turn()==='b' && uniquesocket.id!==players.black)return;
+
+             const result= chess.move(currmove)
+             if(result)
+                {
+                    currentPlayer=chess.turn();
+                    io.emit("move",currmove)  
+                    io.emit("boardState",chess.fen())
+                }
+                else{
+                    console.log('Invalid Move:',currmove)
+                    uniquesocket.emit("invalidMove",currmove);
+                }
+              
+           }
+           catch(err){
+               console.log(err);
+               uniquesocket.emit("Invalid move:",move);
+           }
+        })
 })
 
 
